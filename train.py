@@ -66,7 +66,7 @@ parser.add_argument("--use_cuda", default=True, type=str2bool, help="Use CUDA to
 parser.add_argument("--checkpoint_folder", default="models/", help="Directory for saving checkpoint models")
 
 LoggerConfig()
-# logging.basicConfig(stream=sys.stdout, level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+
 args = parser.parse_args()
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() and args.use_cuda else "cpu")
 
@@ -137,6 +137,7 @@ def test(loader, net, criterion, device):
 
 
 if __name__ == "__main__":
+    os.makedirs(args.checkpoint_folder, exist_ok=True)
     timer = Timer()
 
     logging.info(args)
@@ -236,6 +237,7 @@ if __name__ == "__main__":
                 t_max = int(args.num_epochs * 0.2) // 2
                 scheduler = CosineAnnealingLR(optimizer, t_max, last_epoch=last_epoch)
 
+        logging.info(f"start train lr: {scheduler.get_lr()}")
         train(train_loader, net, criterion, optimizer, device=DEVICE, debug_steps=args.debug_steps, epoch=epoch)
         scheduler.step()
 
