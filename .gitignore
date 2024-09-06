@@ -1,0 +1,27 @@
+.DS_Store
+.venv
+dataset
+palete_06
+.idea
+log
+models
+*.xml
+eval_results/
+
+# Pytorch Models
+*.pth
+
+# images
+*.jpg
+*.png
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+images
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
