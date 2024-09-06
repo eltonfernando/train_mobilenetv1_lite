@@ -55,15 +55,6 @@ parser.add_argument("--base_net", help="Pretrained base model")
 parser.add_argument("--pretrained_ssd", help="Pre-trained base model")
 parser.add_argument("--resume", default=None, type=str, help="Checkpoint state_dict file to resume training from")
 
-# Scheduler
-parser.add_argument("--scheduler", default="multi-step", type=str, help="Scheduler for SGD. It can one of multi-step and cosine")
-
-# Params for Multi-step Scheduler
-parser.add_argument("--milestones", default="80,100", type=str, help="milestones for MultiStepLR")
-
-# Params for Cosine Annealing
-parser.add_argument("--t_max", default=120, type=float, help="T_max value for Cosine Annealing Scheduler.")
-
 # Train params
 parser.add_argument("--batch_size", default=32, type=int, help="Batch size for training")
 parser.add_argument("--num_epochs", default=120, type=int, help="the number epochs")
@@ -235,18 +226,7 @@ if __name__ == "__main__":
     optimizer = torch.optim.SGD(params, lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
     logging.info(f"Learning rate: {args.lr}, Base net learning rate: {base_net_lr}, " + f"Extra Layers learning rate: {extra_layers_lr}.")
 
-    if args.scheduler == "multi-step":
-        logging.info("Uses MultiStepLR scheduler.")
-        milestones = [int(v.strip()) for v in args.milestones.split(",")]
-        scheduler = MultiStepLR(optimizer, milestones=milestones, gamma=0.1, last_epoch=last_epoch)
-    elif args.scheduler == "cosine":
-        logging.info("Uses CosineAnnealingLR scheduler.")
-        scheduler = CosineAnnealingLR(optimizer, args.num_epochs * 4, last_epoch=last_epoch)
-    else:
-        logging.fatal(f"Unsupported Scheduler: {args.scheduler}.")
-        parser.print_help(sys.stderr)
-        sys.exit(1)
-
+    scheduler = CosineAnnealingLR(optimizer, args.num_epochs * 4, last_epoch=last_epoch)
     logging.info(f"Start training from epoch {last_epoch + 1}.")
     is_fine_process = False
     for epoch in range(last_epoch + 1, args.num_epochs):
