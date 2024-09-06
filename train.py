@@ -6,7 +6,7 @@ import sys
 import itertools
 
 import torch
-from torch.utils.data import DataLoader, ConcatDataset
+from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import CosineAnnealingLR, MultiStepLR
 
 from vision.utils.misc import str2bool, Timer, freeze_net_layers, store_labels
@@ -168,18 +168,16 @@ if __name__ == "__main__":
     test_transform = TestTransform(config.image_size, config.image_mean, config.image_std)
 
     logging.info("Prepare training datasets.")
-    datasets = []
 
     dataset = VOCDataset(args.dataset_path, transform=train_transform, target_transform=target_transform)
     label_file = os.path.join(args.checkpoint_folder, "voc-model-labels.txt")
     store_labels(label_file, dataset.class_names)
     num_classes = len(dataset.class_names)
-    datasets.append(dataset)
 
     logging.info(f"Stored labels into file {label_file}.")
-    train_dataset = ConcatDataset(datasets)
-    logging.info("Train dataset size: {}".format(len(train_dataset)))
-    train_loader = DataLoader(train_dataset, args.batch_size, num_workers=args.num_workers, shuffle=True)
+
+    # logging.info("Train dataset size: {}".format(len(train_dataset)))
+    train_loader = DataLoader(dataset, args.batch_size, num_workers=args.num_workers, shuffle=True)
     logging.info("Prepare Validation datasets.")
 
     val_dataset = VOCDataset(args.validation_dataset, transform=test_transform, target_transform=target_transform, is_test=True)
