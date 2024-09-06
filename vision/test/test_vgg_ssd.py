@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from ..ssd.vgg_ssd import create_vgg_ssd
 
 import torch

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import torch
 import torch.nn as nn
 import logging
@@ -8,7 +9,7 @@ from ..utils.model_book import ModelBook
 
 class ModelPrunner:
     def __init__(self, model, train_fun, ignored_paths=[]):
-        """ Implement the pruning algorithm described in the paper https://arxiv.org/pdf/1611.06440.pdf .
+        """Implement the pruning algorithm described in the paper https://arxiv.org/pdf/1611.06440.pdf .
 
         The prunning criteria is dC/dh * h, while C is the cost, h is the activation.
         """
@@ -20,8 +21,8 @@ class ModelPrunner:
         self.grads = {}
         self.handles = []
         self.decendent_batch_norms = {}  # descendants impacted by the conv layers.
-        self.last_conv_path = None    # used to trace the graph
-        self.descendent_convs = {}    # descendants impacted by the conv layers.
+        self.last_conv_path = None  # used to trace the graph
+        self.descendent_convs = {}  # descendants impacted by the conv layers.
         self.descendent_linears = {}  # descendants impacted by the linear layers.
         self.last_linear_path = None  # used to trace the graph
 
@@ -30,17 +31,33 @@ class ModelPrunner:
             raise TypeError(f"The module is not Conv2d, but {type(conv)}.")
 
         if channel_type == "out":
-            new_conv = nn.Conv2d(conv.in_channels, conv.out_channels - 1, conv.kernel_size, conv.stride,
-                                 conv.padding, conv.dilation, conv.groups, conv.bias is not None)
+            new_conv = nn.Conv2d(
+                conv.in_channels,
+                conv.out_channels - 1,
+                conv.kernel_size,
+                conv.stride,
+                conv.padding,
+                conv.dilation,
+                conv.groups,
+                conv.bias is not None,
+            )
             mask = torch.ones(conv.out_channels, dtype=torch.uint8)
             mask[filter_index] = 0
             new_conv.weight.data = conv.weight.data[mask, :, :, :]
             if conv.bias is not None:
                 new_conv.bias.data = conv.bias.data[mask]
 
-        elif channel_type == 'in':
-            new_conv = nn.Conv2d(conv.in_channels - 1, conv.out_channels, conv.kernel_size, conv.stride,
-                                 conv.padding, conv.dilation, conv.groups, conv.bias is not None)
+        elif channel_type == "in":
+            new_conv = nn.Conv2d(
+                conv.in_channels - 1,
+                conv.out_channels,
+                conv.kernel_size,
+                conv.stride,
+                conv.padding,
+                conv.dilation,
+                conv.groups,
+                conv.bias is not None,
+            )
             mask = torch.ones(conv.in_channels, dtype=torch.uint8)
             mask[filter_index] = 0
             new_conv.weight.data = conv.weight.data[:, mask, :, :]
@@ -79,8 +96,7 @@ class ModelPrunner:
     @staticmethod
     def _make_new_linear(linear, feature_index, conv=None, channel_type="out"):
         if channel_type == "out":
-            new_linear = nn.Linear(linear.in_features, linear.out_features - 1,
-                                   bias=linear.bias is not None)
+            new_linear = nn.Linear(linear.in_features, linear.out_features - 1, bias=linear.bias is not None)
             mask = torch.ones(linear.out_features, dtype=torch.uint8)
             mask[feature_index] = 0
             new_linear.weight.data = linear.weight.data[mask, :]
@@ -91,12 +107,11 @@ class ModelPrunner:
                 block = int(linear.in_features / conv.out_channels)
             else:
                 block = 1
-            new_linear = nn.Linear(linear.in_features - block, linear.out_features,
-                                   bias=linear.bias is not None)
+            new_linear = nn.Linear(linear.in_features - block, linear.out_features, bias=linear.bias is not None)
             start_index = feature_index * block
             end_index = (feature_index + 1) * block
             mask = torch.ones(linear.in_features, dtype=torch.uint8)
-            mask[start_index: end_index] = 0
+            mask[start_index:end_index] = 0
             new_linear.weight.data = linear.weight.data[:, mask]
             if linear.bias is not None:
                 new_linear.bias.data = linear.bias.data
@@ -105,8 +120,7 @@ class ModelPrunner:
         return new_linear
 
     def prune_conv_layers(self, num=1):
-        """Prune one conv2d filter.
-        """
+        """Prune one conv2d filter."""
         self.register_conv_hooks()
         before_loss, before_accuracy = self.train_fun(self.model)
         ranks = []
@@ -224,7 +238,7 @@ class ModelPrunner:
         next_linear_path = self.descendent_linears.get(path)
         if next_linear_path:
             next_linear = self.book.get_module(next_linear_path)
-            new_next_linear = self._make_new_linear(next_linear, feature_index, channel_type='in')
+            new_next_linear = self._make_new_linear(next_linear, feature_index, channel_type="in")
             self._update_model(next_linear_path, new_next_linear)
 
     def _update_model(self, path, module):

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # borrowed from "https://github.com/marvis/pytorch-mobilenet"
 
 import torch.nn as nn
@@ -9,18 +10,13 @@ class MobileNetV1(nn.Module):
         super(MobileNetV1, self).__init__()
 
         def conv_bn(inp, oup, stride):
-            return nn.Sequential(
-                nn.Conv2d(inp, oup, 3, stride, 1, bias=False),
-                nn.BatchNorm2d(oup),
-                nn.ReLU(inplace=True)
-            )
+            return nn.Sequential(nn.Conv2d(inp, oup, 3, stride, 1, bias=False), nn.BatchNorm2d(oup), nn.ReLU(inplace=True))
 
         def conv_dw(inp, oup, stride):
             return nn.Sequential(
                 nn.Conv2d(inp, inp, 3, stride, 1, groups=inp, bias=False),
                 nn.BatchNorm2d(inp),
                 nn.ReLU(inplace=True),
-
                 nn.Conv2d(inp, oup, 1, 1, 0, bias=False),
                 nn.BatchNorm2d(oup),
                 nn.ReLU(inplace=True),
@@ -51,6 +47,7 @@ class MobileNetV1(nn.Module):
         x = self.fc(x)
         return x
 
-if __name__=="__main__":
-    model=MobileNetV1(2)
+
+if __name__ == "__main__":
+    model = MobileNetV1(2)
     print(model)

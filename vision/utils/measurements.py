@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import numpy as np
 
 
@@ -22,11 +23,11 @@ def compute_average_precision(precision, recall):
 
 
 def compute_voc2007_average_precision(precision, recall):
-    ap = 0.
-    for t in np.arange(0., 1.1, 0.1):
+    ap = 0.0
+    for t in np.arange(0.0, 1.1, 0.1):
         if np.sum(recall >= t) == 0:
             p = 0
         else:
             p = np.max(precision[recall >= t])
-        ap = ap + p / 11.
+        ap = ap + p / 11.0
     return ap

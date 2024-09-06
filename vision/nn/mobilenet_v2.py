@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import torch.nn as nn
 import math
 
@@ -10,31 +11,17 @@ def conv_bn(inp, oup, stride, use_batch_norm=True, onnx_compatible=False):
     ReLU = nn.ReLU if onnx_compatible else nn.ReLU6
 
     if use_batch_norm:
-        return nn.Sequential(
-            nn.Conv2d(inp, oup, 3, stride, 1, bias=False),
-            nn.BatchNorm2d(oup),
-            ReLU(inplace=True)
-        )
+        return nn.Sequential(nn.Conv2d(inp, oup, 3, stride, 1, bias=False), nn.BatchNorm2d(oup), ReLU(inplace=True))
     else:
-        return nn.Sequential(
-            nn.Conv2d(inp, oup, 3, stride, 1, bias=False),
-            ReLU(inplace=True)
-        )
+        return nn.Sequential(nn.Conv2d(inp, oup, 3, stride, 1, bias=False), ReLU(inplace=True))
 
 
 def conv_1x1_bn(inp, oup, use_batch_norm=True, onnx_compatible=False):
     ReLU = nn.ReLU if onnx_compatible else nn.ReLU6
     if use_batch_norm:
-        return nn.Sequential(
-            nn.Conv2d(inp, oup, 1, 1, 0, bias=False),
-            nn.BatchNorm2d(oup),
-            ReLU(inplace=True)
-        )
+        return nn.Sequential(nn.Conv2d(inp, oup, 1, 1, 0, bias=False), nn.BatchNorm2d(oup), ReLU(inplace=True))
     else:
-        return nn.Sequential(
-            nn.Conv2d(inp, oup, 1, 1, 0, bias=False),
-            ReLU(inplace=True)
-        )
+        return nn.Sequential(nn.Conv2d(inp, oup, 1, 1, 0, bias=False), ReLU(inplace=True))
 
 
 class InvertedResidual(nn.Module):
@@ -102,8 +89,7 @@ class InvertedResidual(nn.Module):
 
 
 class MobileNetV2(nn.Module):
-    def __init__(self, n_class=1000, input_size=224, width_mult=1., dropout_ratio=0.2,
-                 use_batch_norm=True, onnx_compatible=False):
+    def __init__(self, n_class=1000, input_size=224, width_mult=1.0, dropout_ratio=0.2, use_batch_norm=True, onnx_compatible=False):
         super(MobileNetV2, self).__init__()
         block = InvertedResidual
         input_channel = 32
@@ -129,17 +115,20 @@ class MobileNetV2(nn.Module):
             output_channel = int(c * width_mult)
             for i in range(n):
                 if i == 0:
-                    self.features.append(block(input_channel, output_channel, s,
-                                               expand_ratio=t, use_batch_norm=use_batch_norm,
-                                               onnx_compatible=onnx_compatible))
+                    self.features.append(
+                        block(
+                            input_channel, output_channel, s, expand_ratio=t, use_batch_norm=use_batch_norm, onnx_compatible=onnx_compatible
+                        )
+                    )
                 else:
-                    self.features.append(block(input_channel, output_channel, 1,
-                                               expand_ratio=t, use_batch_norm=use_batch_norm,
-                                               onnx_compatible=onnx_compatible))
+                    self.features.append(
+                        block(
+                            input_channel, output_channel, 1, expand_ratio=t, use_batch_norm=use_batch_norm, onnx_compatible=onnx_compatible
+                        )
+                    )
                 input_channel = output_channel
         # building last several layers
-        self.features.append(conv_1x1_bn(input_channel, self.last_channel,
-                                         use_batch_norm=use_batch_norm, onnx_compatible=onnx_compatible))
+        self.features.append(conv_1x1_bn(input_channel, self.last_channel, use_batch_norm=use_batch_norm, onnx_compatible=onnx_compatible))
         # make it nn.Sequential
         self.features = nn.Sequential(*self.features)
 
@@ -161,7 +150,7 @@ class MobileNetV2(nn.Module):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-                m.weight.data.normal_(0, math.sqrt(2. / n))
+                m.weight.data.normal_(0, math.sqrt(2.0 / n))
                 if m.bias is not None:
                     m.bias.data.zero_()
             elif isinstance(m, nn.BatchNorm2d):
