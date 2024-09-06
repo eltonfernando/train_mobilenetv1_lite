@@ -4,7 +4,7 @@ import os
 import logging
 import sys
 import itertools
-
+from utils import LoggerConfig
 import torch
 from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import CosineAnnealingLR, MultiStepLR
@@ -19,7 +19,6 @@ from vision.datasets.voc_dataset import VOCDataset
 from vision.nn.multibox_loss import MultiboxLoss
 from vision.ssd.config import vgg_ssd_config
 from vision.ssd.config import mobilenetv1_ssd_config
-from vision.ssd.config import squeezenet_ssd_config
 from vision.ssd.data_preprocessing import TrainAugmentation, TestTransform
 
 parser = argparse.ArgumentParser(description="Single Shot MultiBox Detector Training With Pytorch")
@@ -75,8 +74,8 @@ parser.add_argument("--use_cuda", default=True, type=str2bool, help="Use CUDA to
 
 parser.add_argument("--checkpoint_folder", default="models/", help="Directory for saving checkpoint models")
 
-
-logging.basicConfig(stream=sys.stdout, level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+LoggerConfig()
+# logging.basicConfig(stream=sys.stdout, level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 args = parser.parse_args()
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() and args.use_cuda else "cpu")
 
@@ -86,6 +85,7 @@ if args.use_cuda and torch.cuda.is_available():
 
 
 def train(loader, net, criterion, optimizer, device, debug_steps=100, epoch=-1):
+
     net.train(True)
     running_loss = 0.0
     running_regression_loss = 0.0
@@ -149,10 +149,7 @@ if __name__ == "__main__":
     timer = Timer()
 
     logging.info(args)
-    if args.net == "vgg16-ssd":
-        create_net = create_vgg_ssd
-        config = vgg_ssd_config
-    elif args.net == "mb1-ssd":
+    if args.net == "mb1-ssd":
         create_net = create_mobilenetv1_ssd
         config = mobilenetv1_ssd_config
     elif args.net == "mb1-ssd-lite":
@@ -232,7 +229,7 @@ if __name__ == "__main__":
     logging.info(f'Took {timer.end("Load Model"):.2f} seconds to load the model.')
 
     net.to(DEVICE)
-    print(f"################# {DEVICE}")
+    logging.info(f"################# {DEVICE}")
 
     criterion = MultiboxLoss(config.priors, iou_threshold=0.5, neg_pos_ratio=3, center_variance=0.1, size_variance=0.2, device=DEVICE)
     optimizer = torch.optim.SGD(params, lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
@@ -244,17 +241,23 @@ if __name__ == "__main__":
         scheduler = MultiStepLR(optimizer, milestones=milestones, gamma=0.1, last_epoch=last_epoch)
     elif args.scheduler == "cosine":
         logging.info("Uses CosineAnnealingLR scheduler.")
-        scheduler = CosineAnnealingLR(optimizer, args.t_max, last_epoch=last_epoch)
+        scheduler = CosineAnnealingLR(optimizer, args.num_epochs * 4, last_epoch=last_epoch)
     else:
         logging.fatal(f"Unsupported Scheduler: {args.scheduler}.")
         parser.print_help(sys.stderr)
         sys.exit(1)
 
     logging.info(f"Start training from epoch {last_epoch + 1}.")
+    is_fine_process = False
     for epoch in range(last_epoch + 1, args.num_epochs):
-        optimizer.step()
-        scheduler.step()
+        if epoch > int(args.num_epochs * 0.8):
+            if is_fine_process is False:
+                is_fine_process = True
+                t_max = int(args.num_epochs * 0.2) // 2
+                scheduler = CosineAnnealingLR(optimizer, t_max, last_epoch=last_epoch)
+
         train(train_loader, net, criterion, optimizer, device=DEVICE, debug_steps=args.debug_steps, epoch=epoch)
+        scheduler.step()
 
         if epoch % args.validation_epochs == 0 or epoch == args.num_epochs - 1:
             val_loss, val_regression_loss, val_classification_loss = test(val_loader, net, criterion, DEVICE)
