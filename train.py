@@ -49,7 +49,6 @@ parser.add_argument(
     "--extra_layers_lr", default=None, type=float, help="initial learning rate for the layers not in base net and prediction heads."
 )
 
-
 # Params for loading pretrained basenet or checkpoints.
 parser.add_argument("--base_net", help="Pretrained base model")
 parser.add_argument("--pretrained_ssd", help="Pre-trained base model")
@@ -75,7 +74,7 @@ if args.use_cuda and torch.cuda.is_available():
     logging.info("Usando Cuda.")
 
 
-def train(loader, net, criterion, optimizer, device, debug_steps=100, epoch=-1):
+def train(loader, net, criterion, optimizer, device, debug_steps=10, epoch=-1):
 
     net.train(True)
     running_loss = 0.0
@@ -165,7 +164,6 @@ if __name__ == "__main__":
 
     logging.info(f"Stored labels into file {label_file}.")
 
-    # logging.info("Train dataset size: {}".format(len(train_dataset)))
     train_loader = DataLoader(dataset, args.batch_size, num_workers=args.num_workers, shuffle=True)
     logging.info("Prepare Validation datasets.")
 
@@ -227,15 +225,11 @@ if __name__ == "__main__":
     optimizer = torch.optim.SGD(params, lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
     logging.info(f"Learning rate: {args.lr}, Base net learning rate: {base_net_lr}, " + f"Extra Layers learning rate: {extra_layers_lr}.")
 
-    scheduler = CosineAnnealingLR(optimizer, args.num_epochs * 4, last_epoch=last_epoch)
+    scheduler = CosineAnnealingLR(optimizer, args.num_epochs, last_epoch=last_epoch)
     logging.info(f"Start training from epoch {last_epoch + 1}.")
     is_fine_process = False
     for epoch in range(last_epoch + 1, args.num_epochs):
-        if epoch > int(args.num_epochs * 0.8):
-            if is_fine_process is False:
-                is_fine_process = True
-                t_max = int(args.num_epochs * 0.2) // 2
-                scheduler = CosineAnnealingLR(optimizer, t_max, last_epoch=last_epoch)
+        
 
         logging.info(f"start train lr: {scheduler.get_lr()}")
         train(train_loader, net, criterion, optimizer, device=DEVICE, debug_steps=args.debug_steps, epoch=epoch)
