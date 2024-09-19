@@ -87,12 +87,27 @@ class VOCDataset:
         else:
             image_sets_file = self.root / "ImageSets/Main/trainval.txt"
         self.ids = VOCDataset._read_image_ids(image_sets_file)
+
         self.keep_difficult = keep_difficult
         self.preprocessor = Preprocessor(input_size=224)
 
         # if the labels file exists, read in the class names
 
         self.__load_classe()
+        # self.static_anotation = self.load_stactic_anotation()
+        # self.static_image = self.load_stactic_image()
+
+    def load_stactic_image(self):
+        list_images = []
+        for name_id in self.ids:
+            list_images.append(self._read_image(name_id))
+        return list_images
+
+    def load_stactic_anotation(self):
+        list_anotations = []
+        for name_id in self.ids:
+            list_anotations.append(self._get_annotation(name_id))
+        return list_anotations
 
     def __load_classe(self):
         path = self.root / "labels.txt"
@@ -114,12 +129,13 @@ class VOCDataset:
         self.class_dict = {class_name: i for i, class_name in enumerate(self.class_names)}
 
     def __getitem__(self, index):
+
         image_id = self.ids[index]
-        boxes, labels, is_difficult = self._get_annotation(image_id)
+        boxes, labels, is_difficult = self._get_annotation(image_id)  # self.static_anotation[index]
         if not self.keep_difficult:
             boxes = boxes[is_difficult == 0]
             labels = labels[is_difficult == 0]
-        image = self._read_image(image_id)
+        image = self._read_image(image_id)  # self.static_image[index] #
 
         # image, boxes = self.preprocessor.preprocess(image, boxes)
 

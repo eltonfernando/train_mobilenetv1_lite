@@ -80,8 +80,10 @@ def train(loader, net, criterion, optimizer, device, debug_steps=10, epoch=-1):
     running_loss = 0.0
     running_regression_loss = 0.0
     running_classification_loss = 0.0
-
+    # start_time = time.time()
     for i, data in enumerate(loader):
+        # logging.warning(f"timer {time.time() - start_time}" )
+        # start_time = time.time()
         images, boxes, labels = data
         images = images.to(device)
         boxes = boxes.to(device)
@@ -112,7 +114,6 @@ def train(loader, net, criterion, optimizer, device, debug_steps=10, epoch=-1):
             running_loss = 0.0
             running_regression_loss = 0.0
             running_classification_loss = 0.0
-        time.time()
 
 
 def test(loader, net, criterion, device):
