@@ -158,6 +158,7 @@ class VOCDataset:
         annotation_file = self.root / f"Annotations/{image_id}.xml"
         objects = ET.parse(annotation_file).findall("object")
         if len(objects) == 0:
+            return self._gen_random_background()
             raise Exception(f"xml sem box {annotation_file}")
         boxes = []
         labels = []
@@ -180,6 +181,7 @@ class VOCDataset:
                 is_difficult.append(int(is_difficult_str) if is_difficult_str else 0)
 
         if len(boxes) == 0:
+            return self._gen_random_background()
             raise Exception(f"box não pode ser nulo {annotation_file} {self.class_dict} {boxes}")
         return (np.array(boxes, dtype=np.float32), np.array(labels, dtype=np.int64), np.array(is_difficult, dtype=np.uint8))
 
