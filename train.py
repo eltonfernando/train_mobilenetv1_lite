@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import argparse
 import os
+import time
 import logging
 import sys
 import itertools
@@ -17,7 +18,6 @@ from vision.ssd.mobilenetv1_ssd_lite import create_mobilenetv1_ssd_lite
 
 from vision.datasets.voc_dataset import VOCDataset
 from vision.nn.multibox_loss import MultiboxLoss
-from vision.ssd.config import vgg_ssd_config
 from vision.ssd.config import mobilenetv1_ssd_config
 from vision.ssd.data_preprocessing import TrainAugmentation, TestTransform
 
@@ -80,6 +80,7 @@ def train(loader, net, criterion, optimizer, device, debug_steps=10, epoch=-1):
     running_loss = 0.0
     running_regression_loss = 0.0
     running_classification_loss = 0.0
+
     for i, data in enumerate(loader):
         images, boxes, labels = data
         images = images.to(device)
@@ -87,7 +88,9 @@ def train(loader, net, criterion, optimizer, device, debug_steps=10, epoch=-1):
         labels = labels.to(device)
 
         optimizer.zero_grad()
+
         confidence, locations = net(images)
+
         regression_loss, classification_loss = criterion(confidence, locations, labels, boxes)  # TODO CHANGE BOXES
         loss = regression_loss + classification_loss
         loss.backward()
@@ -109,6 +112,7 @@ def train(loader, net, criterion, optimizer, device, debug_steps=10, epoch=-1):
             running_loss = 0.0
             running_regression_loss = 0.0
             running_classification_loss = 0.0
+        time.time()
 
 
 def test(loader, net, criterion, device):
@@ -163,10 +167,10 @@ if __name__ == "__main__":
     num_classes = len(dataset.class_names)
 
     logging.info(f"Stored labels into file {label_file}.")
-
-    train_loader = DataLoader(dataset, args.batch_size, num_workers=args.num_workers, shuffle=True)
+    start = time.time()
+    train_loader = DataLoader(dataset, args.batch_size, num_workers=args.num_workers, shuffle=True, pin_memory=True)
+    logging.info(f"DataLoader Time: {time.time() - start}")
     logging.info("Prepare Validation datasets.")
-
     val_dataset = VOCDataset(args.validation_dataset, transform=test_transform, target_transform=target_transform, is_test=True)
 
     logging.info("validation dataset size: {}".format(len(val_dataset)))
@@ -229,9 +233,8 @@ if __name__ == "__main__":
     logging.info(f"Start training from epoch {last_epoch + 1}.")
     is_fine_process = False
     for epoch in range(last_epoch + 1, args.num_epochs):
-        
 
-        logging.info(f"start train lr: {scheduler.get_lr()}")
+        logging.info(f"start train lr: {scheduler.get_last_lr()}")
         train(train_loader, net, criterion, optimizer, device=DEVICE, debug_steps=args.debug_steps, epoch=epoch)
         scheduler.step()
 

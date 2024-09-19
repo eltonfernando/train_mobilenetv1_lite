@@ -5,6 +5,71 @@ import pathlib
 import xml.etree.ElementTree as ET
 import cv2
 import os
+import torch
+
+
+class Preprocessor:
+    def __init__(self, input_size=640):
+        self.input_size = input_size  # Define o tamanho da entrada do modelo (ex.: 640x640)
+
+    def letterbox(self, image, boxes, input_size=640):
+        """
+        Redimensiona a imagem mantendo a proporção original, e preenche com padding para atingir o input_size.
+        Ajusta também as bounding boxes.
+        """
+        height, width = image.shape[:2]
+        scale = min(input_size / height, input_size / width)
+        new_width, new_height = int(width * scale), int(height * scale)
+
+        # Redimensionar a imagem com base na nova escala
+        resized_image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_LINEAR)
+
+        # Adicionar padding (letterbox)
+        pad_w = (input_size - new_width) // 2
+        pad_h = (input_size - new_height) // 2
+        padded_image = cv2.copyMakeBorder(resized_image, pad_h, pad_h, pad_w, pad_w, cv2.BORDER_CONSTANT, value=(114, 114, 114))
+        padded_image = cv2.resize(padded_image, (input_size, input_size), interpolation=cv2.INTER_LINEAR)
+
+        # Ajustar bounding boxes conforme o redimensionamento e padding
+        if len(boxes) > 0:
+            boxes[:, [0, 2]] = boxes[:, [0, 2]] * scale + pad_w  # Ajustar coordenadas x (xmin, xmax)
+            boxes[:, [1, 3]] = boxes[:, [1, 3]] * scale + pad_h  # Ajustar coordenadas y (ymin, ymax)
+
+        return padded_image, boxes
+
+    def normalize(self, image):
+        """
+        Normaliza os valores de pixel para o intervalo [0, 1].
+        """
+        return image.astype(np.float32) / 255.0
+
+    def to_chw(self, image):
+        """
+        Converte a imagem do formato HWC para CHW.
+        """
+        return np.transpose(image, (2, 0, 1))  # De (H, W, C) para (C, H, W)
+
+    def preprocess(self, image, boxes):
+        """
+        Pipeline de pré-processamento completo.
+        """
+        height, width, channels = image.shape
+        boxes[:, 0] /= width
+        boxes[:, 2] /= width
+        boxes[:, 1] /= height
+        boxes[:, 3] /= height
+
+        # Redimensiona a imagem com letterbox
+        image, boxes = self.letterbox(image, boxes, self.input_size)
+        # for x_min, y_min, x_max, y_max in boxes:
+        #    cv2.rectangle(image, (int(x_min), int(y_min)), (int(x_max), int(y_max)), (0, 255, 0), 2)
+        # cv2.imwrite(f"letterbox{np.random.randint(0, 1000)}.jpg", image)
+
+        # Normaliza os valores de pixel
+        image = self.normalize(image)
+        image = self.to_chw(image)
+
+        return image, boxes
 
 
 class VOCDataset:
@@ -23,6 +88,7 @@ class VOCDataset:
             image_sets_file = self.root / "ImageSets/Main/trainval.txt"
         self.ids = VOCDataset._read_image_ids(image_sets_file)
         self.keep_difficult = keep_difficult
+        self.preprocessor = Preprocessor(input_size=224)
 
         # if the labels file exists, read in the class names
 
@@ -54,10 +120,16 @@ class VOCDataset:
             boxes = boxes[is_difficult == 0]
             labels = labels[is_difficult == 0]
         image = self._read_image(image_id)
+
+        # image, boxes = self.preprocessor.preprocess(image, boxes)
+
+        # image = torch.from_numpy(image, dtype=torch.float32)
+        # logging.error("image: " + str(image.shape) + " boxes: " + str(boxes.shape))
         if self.transform:
             image, boxes, labels = self.transform(image, boxes, labels)
         if self.target_transform:
             boxes, labels = self.target_transform(boxes, labels)
+
         return image, boxes, labels
 
     def get_image(self, index):
