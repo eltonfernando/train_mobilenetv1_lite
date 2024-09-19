@@ -25,48 +25,25 @@ class VOCDataset:
         self.keep_difficult = keep_difficult
 
         # if the labels file exists, read in the class names
-        label_file_name = self.root / "labels.txt"
 
-        if os.path.isfile(label_file_name):
-            class_string = ""
-            with open(label_file_name, "r") as infile:
-                for line in infile:
-                    class_string += line.rstrip()
+        self.__load_classe()
 
-            # classes should be a comma separated list
+    def __load_classe(self):
+        path = self.root / "labels.txt"
+        if not os.path.isfile(path):
+            raise FileNotFoundError("VOC Labels file not found: " + path)
 
-            classes = class_string.split(",")
-            # prepend BACKGROUND as first class
-            classes.insert(0, "BACKGROUND")
-            classes = [elem.replace(" ", "") for elem in classes]
-            self.class_names = tuple(classes)
-            logging.info("VOC Labels read from file: " + str(self.class_names))
+        class_string = ""
+        with open(path, "r") as infile:
+            for line in infile:
+                class_string += line.rstrip()
 
-        else:
-            logging.info("No labels file, using default VOC classes.")
-            self.class_names = (
-                "BACKGROUND",
-                "aeroplane",
-                "bicycle",
-                "bird",
-                "boat",
-                "bottle",
-                "bus",
-                "car",
-                "cat",
-                "chair",
-                "cow",
-                "diningtable",
-                "dog",
-                "horse",
-                "motorbike",
-                "person",
-                "pottedplant",
-                "sheep",
-                "sofa",
-                "train",
-                "tvmonitor",
-            )
+        classes = class_string.split(",")
+        # prepend BACKGROUND as first class
+        classes.insert(0, "BACKGROUND")
+        classes = [elem.replace(" ", "") for elem in classes]
+        self.class_names = tuple(classes)
+        logging.info("VOC Labels read from file: " + str(self.class_names))
 
         self.class_dict = {class_name: i for i, class_name in enumerate(self.class_names)}
 
