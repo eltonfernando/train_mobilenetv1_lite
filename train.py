@@ -10,9 +10,8 @@ import torch
 from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import CosineAnnealingLR, MultiStepLR
 
-from vision.utils.misc import str2bool, Timer, freeze_net_layers, store_labels
+from vision.utils.misc import str2bool, Timer, store_labels
 from vision.ssd.ssd import MatchPrior
-from vision.ssd.vgg_ssd import create_vgg_ssd
 from vision.ssd.mobilenetv1_ssd import create_mobilenetv1_ssd
 from vision.ssd.mobilenetv1_ssd_lite import create_mobilenetv1_ssd_lite
 
@@ -26,23 +25,17 @@ parser = argparse.ArgumentParser(description="Single Shot MultiBox Detector Trai
 
 parser.add_argument("--dataset_path", help="Dataset directory path")
 parser.add_argument("--validation_dataset", help="Dataset directory path")
-parser.add_argument("--balance_data", action="store_true", help="Balance training data by down-sampling more frequent labels.")
-
 
 parser.add_argument(
     "--net",
     default="vgg16-ssd",
     help="The network architecture, it can be mb1-ssd, mb1-lite-ssd, mb2-ssd-lite, mb3-large-ssd-lite, mb3-small-ssd-lite or vgg16-ssd.",
 )
-parser.add_argument("--freeze_base_net", action="store_true", help="Freeze base net layers.")
-parser.add_argument("--freeze_net", action="store_true", help="Freeze all the layers except the prediction head.")
-
-parser.add_argument("--mb2_width_mult", default=1.0, type=float, help="Width Multiplifier for MobilenetV2")
 
 # Params for SGD
 parser.add_argument("--lr", "--learning-rate", default=1e-3, type=float, help="initial learning rate")
 parser.add_argument("--momentum", default=0.9, type=float, help="Momentum value for optim")
-parser.add_argument("--weight_decay", default=5e-4, type=float, help="Weight decay for SGD")
+parser.add_argument("--weight_decay", default=5e-5, type=float, help="Weight decay for SGD")
 parser.add_argument("--gamma", default=0.1, type=float, help="Gamma update for SGD")
 parser.add_argument("--base_net_lr", default=None, type=float, help="initial learning rate for base net.")
 parser.add_argument(
@@ -185,31 +178,12 @@ if __name__ == "__main__":
 
     base_net_lr = args.base_net_lr if args.base_net_lr is not None else args.lr
     extra_layers_lr = args.extra_layers_lr if args.extra_layers_lr is not None else args.lr
-    if args.freeze_base_net:
-        logging.info("Freeze base net.")
-        freeze_net_layers(net.base_net)
-        params = itertools.chain(
-            net.source_layer_add_ons.parameters(),
-            net.extras.parameters(),
-            net.regression_headers.parameters(),
-            net.classification_headers.parameters(),
-        )
-        params = [
-            {"params": itertools.chain(net.source_layer_add_ons.parameters(), net.extras.parameters()), "lr": extra_layers_lr},
-            {"params": itertools.chain(net.regression_headers.parameters(), net.classification_headers.parameters())},
-        ]
-    elif args.freeze_net:
-        freeze_net_layers(net.base_net)
-        freeze_net_layers(net.source_layer_add_ons)
-        freeze_net_layers(net.extras)
-        params = itertools.chain(net.regression_headers.parameters(), net.classification_headers.parameters())
-        logging.info("Freeze all the layers except prediction heads.")
-    else:
-        params = [
-            {"params": net.base_net.parameters(), "lr": base_net_lr},
-            {"params": itertools.chain(net.source_layer_add_ons.parameters(), net.extras.parameters()), "lr": extra_layers_lr},
-            {"params": itertools.chain(net.regression_headers.parameters(), net.classification_headers.parameters())},
-        ]
+
+    params = [
+        {"params": net.base_net.parameters(), "lr": base_net_lr},
+        {"params": itertools.chain(net.source_layer_add_ons.parameters(), net.extras.parameters()), "lr": extra_layers_lr},
+        {"params": itertools.chain(net.regression_headers.parameters(), net.classification_headers.parameters())},
+    ]
 
     timer.start("Load Model")
     if args.resume:
@@ -230,12 +204,13 @@ if __name__ == "__main__":
     optimizer = torch.optim.SGD(params, lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
     logging.info(f"Learning rate: {args.lr}, Base net learning rate: {base_net_lr}, " + f"Extra Layers learning rate: {extra_layers_lr}.")
 
-    scheduler = CosineAnnealingLR(optimizer, args.num_epochs, last_epoch=last_epoch)
+    scheduler = CosineAnnealingLR(optimizer, args.num_epochs * 2, last_epoch=last_epoch)
     logging.info(f"Start training from epoch {last_epoch + 1}.")
     is_fine_process = False
     for epoch in range(last_epoch + 1, args.num_epochs):
 
         logging.info(f"start train lr: {scheduler.get_last_lr()}")
+
         train(train_loader, net, criterion, optimizer, device=DEVICE, debug_steps=args.debug_steps, epoch=epoch)
         scheduler.step()
 

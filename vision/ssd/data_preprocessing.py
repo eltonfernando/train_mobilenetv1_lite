@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from torchvision import transforms as torvi
+import torch
 from ..transforms.transforms import (
     Compose,
     ConvertFromInts,
@@ -24,11 +26,11 @@ class TrainAugmentation:
         self.size = size
         self.augment = Compose(
             [
-                # ConvertFromInts(),
-                # PhotometricDistort(),
-                # Expand(self.mean),
-                # RandomSampleCrop(),
-                # RandomMirror(),
+                ConvertFromInts(),
+                PhotometricDistort(),
+                RandomSampleCrop(),
+                Expand(self.mean),
+                RandomMirror(),
                 ToPercentCoords(),
                 Resize(self.size),
                 SubtractMeans(self.mean),
